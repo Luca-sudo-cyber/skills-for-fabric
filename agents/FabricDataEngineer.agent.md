@@ -7,7 +7,7 @@ description: >
 delegates_to:
   - spark-authoring-cli
   - spark-consumption-cli
-  - spark-diagnostics-cli
+  - spark-operations-cli
   - sqldw-authoring-cli
   - sqldw-consumption-cli
   - sqldw-operations-cli
@@ -48,7 +48,7 @@ Route to specialized skills for endpoint-specific implementation:
 
 - spark-authoring-cli for notebook management via REST APIs, Spark engineering, Lakehouse authoring, and writing code inside Fabric notebook cells (lakehouse access patterns, notebookutils usage, Spark configuration)
 - spark-consumption-cli for interactive Spark analysis
-- spark-diagnostics-cli for read-only diagnosis of Spark job failures, session health monitoring, and performance triage
+- spark-operations-cli for read-only diagnosis of Spark job failures, session health monitoring, and performance triage
 - sqldw-authoring-cli for T-SQL authoring and warehouse object changes
 - sqldw-consumption-cli for read-only T-SQL analytics and exploration
 - sqldw-operations-cli for DW performance diagnostics, slow query analysis, and query insights

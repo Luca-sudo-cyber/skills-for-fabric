@@ -10,7 +10,7 @@ description: >
   Triggers: "develop notebook", "data engineering", "workspace setup", "pipeline design",
   "infrastructure provisioning", "Delta Lake patterns", "Spark development", "lakehouse configuration",
   "write notebook code", "notebookutils", "notebook cell", "PySpark notebook",
-  "%%sql", "%%configure", "fabric notebook", "run notebook", "notebook deployment".
+  "%%sql cell", "%%configure", "fabric notebook", "run notebook", "notebook deployment".
 ---
 
 > **Update Check — ONCE PER SESSION (mandatory)**
@@ -25,7 +25,7 @@ description: >
 
 # Spark Authoring — CLI Skill
 
-This skill covers two complementary areas: (1) **managing Fabric Spark artifacts via REST APIs** (workspaces, lakehouses, notebooks, jobs, pipelines) and (2) **writing code inside Fabric Notebook cells** (PySpark, Scala, SparkR, SQL with correct lakehouse access, notebookutils, and Spark configuration). For notebook code authoring fundamentals and shared modules, see [SPARK-NOTEBOOK-AUTHORING-CORE.md](../../common/SPARK-NOTEBOOK-AUTHORING-CORE.md).
+This skill covers two complementary areas: (1) **managing Fabric Spark artifacts via REST APIs** (workspaces, lakehouses, notebooks, jobs, pipelines) and (2) **writing code inside Fabric Notebook cells** (PySpark, Scala, SparkR, SQL with correct lakehouse access, notebookutils, and Spark configuration). For notebook code authoring fundamentals and shared modules, MUST see [SPARK-NOTEBOOK-AUTHORING-CORE.md](../../common/SPARK-NOTEBOOK-AUTHORING-CORE.md).
 
 ## Table of Contents
 
@@ -148,8 +148,8 @@ This skill covers two complementary areas: (1) **managing Fabric Spark artifacts
 > **Rule 3 — Prevent duplicate jobs and monitor execution properly.**
 > Before submitting new notebook run, ALWAYS check for recent job instances first (last 5 minutes). If recent job exists, monitor it instead of creating duplicate. After submission, capture job instance ID immediately and poll status - never retry POST. See SPARK-AUTHORING-CORE.md Job Monitoring for patterns.
 >
-> **Rule 4 — For notebook code authoring, follow SPARK-NOTEBOOK-AUTHORING-CORE.md.**
-> When writing code inside notebook cells, always read [SPARK-NOTEBOOK-AUTHORING-CORE.md](../../common/SPARK-NOTEBOOK-AUTHORING-CORE.md) first — it defines the code generation approach, rules, and a Module Index linking to detailed guides (lakehouse paths, connections, context, orchestration, etc.). Use the Spark-specific resources in this skill ([data-engineering-patterns.md](resources/data-engineering-patterns.md), [development-workflow.md](resources/development-workflow.md)) for Spark-only implementation details.
+> **Rule 4 — For notebook code authoring, MUST follow SPARK-NOTEBOOK-AUTHORING-CORE.md.**
+> When writing code inside notebook cells, MUST read [SPARK-NOTEBOOK-AUTHORING-CORE.md](../../common/SPARK-NOTEBOOK-AUTHORING-CORE.md) first — it defines the code generation approach, rules, and a Module Index linking to detailed guides (lakehouse paths, connections, context, orchestration, etc.). Use the Spark-specific resources in this skill ([data-engineering-patterns.md](resources/data-engineering-patterns.md), [development-workflow.md](resources/development-workflow.md)) for Spark-only implementation details.
 
 ---
 

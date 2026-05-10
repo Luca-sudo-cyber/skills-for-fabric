@@ -54,23 +54,49 @@ https://learn.microsoft.com/en-us/rest/api/fabric/articles/
   - Docs: https://learn.microsoft.com/en-us/fabric/data-engineering/how-to-use-notebook
 - **Spark Jobs**: Production Spark workloads
   - Docs: https://learn.microsoft.com/en-us/fabric/data-engineering/spark-job-definition
+  - Operations skill: `skills/spark-operations-cli/SKILL.md` — read-only triage for failed jobs, stuck sessions, performance bottlenecks
 
 ### Data Warehouse
 - **Warehouse**: T-SQL data warehouse
   - Docs: https://learn.microsoft.com/en-us/fabric/data-warehouse/data-warehousing
   - Note: Limited T-SQL surface area - check supported features
+  - Authoring skill: `skills/sqldw-authoring-cli/SKILL.md` — DDL, DML, ingestion, schema changes
+  - Consumption skill: `skills/sqldw-consumption-cli/SKILL.md` — read-only T-SQL queries
+  - Operations skill: `skills/sqldw-operations-cli/SKILL.md` — performance diagnostics, slow queries, query insights
 
 ### Data Integration
 - **Pipelines**: Orchestration and data movement
   - Docs: https://learn.microsoft.com/en-us/fabric/data-factory/data-factory-overview
 - **Dataflows Gen2**: Low-code transformations with Power Query
   - Docs: https://learn.microsoft.com/en-us/fabric/data-factory/dataflows-gen2-overview
+  - Authoring skill: `skills/dataflows-authoring-cli/SKILL.md` — dataflow lifecycle management, Power Query M mashup authoring
+  - Consumption skill: `skills/dataflows-consumption-cli/SKILL.md` — read-only dataflow exploration, monitoring, status queries
+  - Primary CLI tool: `az rest` via Fabric REST API
 
 ### Real-Time Intelligence
 - **Eventstreams**: Real-time data ingestion
   - Docs: https://learn.microsoft.com/en-us/fabric/real-time-intelligence/event-streams/overview
-- **KQL Database**: Time-series queries with Kusto
+  - Authoring skill: `skills/eventstream-authoring-cli/SKILL.md` — create, configure, deploy Eventstream topologies (sources, operators, destinations)
+  - Consumption skill: `skills/eventstream-consumption-cli/SKILL.md` — list, inspect, monitor Eventstreams
+  - Primary CLI tool: `az rest` via Fabric REST API
+- **Activator**: Alerts, notifications, and automated actions over Fabric data/events
+  - Docs: https://learn.microsoft.com/en-us/fabric/real-time-intelligence/data-activator/activator-introduction
+  - Authoring skill: `skills/activator-authoring-cli/SKILL.md` — create Activator items, sources, rules, conditions, and actions
+  - Consumption skill: `skills/activator-consumption-cli/SKILL.md` — inspect Activator definitions, rules, sources, and actions
+  - Primary CLI tool: `az rest` via Fabric REST API
+- **KQL Database / Eventhouse**: Time-series queries with Kusto
   - Docs: https://learn.microsoft.com/en-us/fabric/real-time-intelligence/create-database
+  - Authoring skill: `skills/eventhouse-authoring-cli/SKILL.md` — table management, ingestion, policies, materialized views
+  - Consumption skill: `skills/eventhouse-consumption-cli/SKILL.md` — read-only KQL queries, schema discovery
+  - Primary CLI tool: `az rest` via Kusto REST API (`/v1/rest/query` and `/v1/rest/mgmt`)
+  - Token audience: `https://kusto.kusto.windows.net/.default`
+
+### OneLake Catalog Search
+- **Catalog Search API**: Cross-workspace item discovery
+  - Docs: https://learn.microsoft.com/en-us/rest/api/fabric/core/catalog/search
+  - Consumption skill: `skills/search-consumption-cli/SKILL.md` — find items by name, description, workspace name, or type
+  - Primary CLI tool: `az rest` via `POST /v1/catalog/search`
+  - Token audience: `https://api.fabric.microsoft.com/.default`
 
 ### Business Intelligence
 - **Semantic Models**: DAX, XMLA, Power BI integration
@@ -86,7 +112,9 @@ https://learn.microsoft.com/en-us/rest/api/fabric/articles/
 
 ### Must
 - Use Delta Lake format for Lakehouse tables
-- Include time filters in KQL queries
+- Include time filters in KQL queries (`where Timestamp > ago(...)`)
+- Use `has` over `contains` for indexed string search in KQL
+- Use idempotent KQL commands (`.create-merge table`, `.create-or-alter function`)
 - Handle credentials via environment variables or Key Vault
 - Use parameterized notebooks and pipelines
 

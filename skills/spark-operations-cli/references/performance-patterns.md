@@ -1,6 +1,21 @@
 # Performance Patterns
 
-> **Scope**: Identify and resolve Spark performance bottlenecks in Microsoft Fabric — covering anti-patterns, stage/task analysis, optimization recipes, and capacity diagnostics. All examples use `az rest` and PySpark via Livy sessions.
+> **Scope**: Identify and resolve Spark performance bottlenecks in Microsoft Fabric — covering detection thresholds, anti-patterns, stage/task analysis, optimization recipes, and capacity diagnostics. All examples use `az rest` and PySpark via Livy sessions.
+
+---
+
+## Detection Thresholds
+
+The diagnostic skill uses the following thresholds to flag performance issues:
+
+| Metric | Threshold | Severity | Meaning |
+|--------|-----------|----------|---------|
+| `Max executorRunTime / Median` | > 3× | HIGH | Data skew |
+| `diskBytesSpilled` | > 0 | MEDIUM | Memory insufficient for sort/join |
+| `gcTime / executorRunTime` | > 20% | MEDIUM | GC pressure |
+| `shuffleWriteBytes` per stage | > 1 GB | MEDIUM | Heavy shuffle |
+| `coreEfficiency` | < 30% | HIGH | Severe underutilisation |
+| `idleTime / duration` | > 40% | MEDIUM | High idle ratio |
 
 ---
 
@@ -129,6 +144,157 @@ df_result.explain(True)  # look for "CartesianProduct" or "BroadcastNestedLoopJo
 ```
 
 **Fix**: Always specify explicit join conditions. If a cross join is intended, use `df1.crossJoin(df2)` to make intent clear and add a downstream filter.
+
+### High GC Pressure
+
+**What it is**: The JVM heap is filling up faster than garbage collection can free it. Executor CPU time is dominated by GC; throughput is much lower than raw CPU capacity suggests.
+
+**Detection**: `gcTime / executorRunTime > 20%`
+
+**Root Cause:**
+- Python UDFs that create Python objects in every row
+- String-heavy DataFrames with high cardinality
+- Many small objects created by complex aggregation logic
+
+**Fix:**
+```python
+# Option 1: Replace Python UDFs with native PySpark SQL functions
+# BAD — UDF creates Python objects per row
+from pyspark.sql.functions import udf
+@udf("string")
+def clean(s):
+    return s.strip().lower() if s else ""
+
+# GOOD — uses JVM-native function, no Python object creation
+from pyspark.sql.functions import lower, trim
+df = df.withColumn("cleaned", lower(trim(col("value"))))
+
+# Option 2: Use Pandas UDFs (vectorized) when Python logic is mandatory
+from pyspark.sql.functions import pandas_udf
+import pandas as pd
+
+@pandas_udf("double")
+def compute_score(values: pd.Series) -> pd.Series:
+    return values.apply(lambda x: x * 2.5)
+
+# Option 3: Cache DataFrames that are used multiple times
+df_expensive.cache()
+df_expensive.count()  # trigger materialization
+
+# Option 4: Use Parquet/Delta format (columnar, minimizes Java object count)
+df.write.format("delta").save("Files/output/")
+```
+
+### Heavy Shuffle
+
+**What it is**: Too much data is being shuffled across the network. Stage takes a long time; many "shuffle write" / "shuffle read" bytes visible in stage metrics.
+
+**Detection**: `shuffleWriteBytes > 1 GB` in a stage
+
+**Root Cause:**
+- `groupBy` + aggregation on a high-cardinality column
+- Multiple chained joins without caching intermediate results
+- `repartition(N)` with N larger than needed
+
+**Fix:**
+```python
+# Option 1: Cache intermediate DataFrames to avoid re-shuffling
+df_joined = large1.join(large2, "key").cache()
+df_joined.count()  # materialize
+result1 = df_joined.groupBy("category").agg(...)
+result2 = df_joined.filter(col("status") == "active")
+
+# Option 2: Reduce join width — select only needed columns before join
+df_slim = df.select("key", "value1", "value2")
+df_slim.join(other_slim, "key")
+
+# Option 3: Use bucket tables for repeated large-table joins (eliminates shuffle)
+df.write.bucketBy(64, "user_id").sortBy("user_id").saveAsTable("events_bucketed")
+events = spark.table("events_bucketed")
+users  = spark.table("users_bucketed")
+events.join(users, "user_id")  # no shuffle!
+
+# Option 4: Tune shuffle partitions to match data volume
+# Rule of thumb: each shuffle partition should be 100-200 MB
+spark.conf.set("spark.sql.shuffle.partitions", "100")
+# Or let AQE coalesce automatically:
+spark.conf.set("spark.sql.adaptive.coalescePartitions.enabled", "true")
+```
+
+### Too Many Small Partitions
+
+**What it is**: High number of tasks but very short duration per task (< 100ms). Task scheduling overhead dominates actual compute time.
+
+**Detection**: Stage shows 1000+ tasks but each completes in milliseconds.
+
+**Root Cause:** `spark.sql.shuffle.partitions` is set too high relative to data volume, or source files are very small (many small Parquet files).
+
+**Fix:**
+```python
+# Reduce shuffle partitions globally
+spark.conf.set("spark.sql.shuffle.partitions", "50")  # tune to your data size
+
+# Or let AQE coalesce small partitions automatically (recommended)
+spark.conf.set("spark.sql.adaptive.enabled", "true")
+spark.conf.set("spark.sql.adaptive.coalescePartitions.enabled", "true")
+spark.conf.set("spark.sql.adaptive.advisoryPartitionSizeInBytes", "128MB")
+
+# For source files: coalesce small files before processing
+df = spark.read.parquet("Files/raw/")
+df = df.coalesce(20)  # reduce from 500 tiny partitions to 20 larger ones
+```
+
+### Driver Memory Bottleneck
+
+**What it is**: Operations that run on the driver rather than executors. All executors idle while driver is computing.
+
+**Detection**: Driver OOM (see [job-diagnostics.md pattern #1](job-diagnostics.md#1-out-of-memory--driver)) or very long "driver computation" phases with idle executors.
+
+**Root Cause:**
+- `df.collect()` — materializes entire DataFrame in driver memory
+- `df.toPandas()` — same
+- Schema inference on many files
+- Building broadcast variables from large datasets
+
+**Fix:**
+```python
+# Instead of collect(): write results
+df.write.mode("overwrite").parquet("Files/output/")
+display(df.limit(1000))  # paginate for visual inspection
+
+# For schema inference on many files: provide schema explicitly
+from pyspark.sql.types import StructType, StructField, StringType, LongType
+schema = StructType([
+    StructField("id", LongType(), True),
+    StructField("name", StringType(), True),
+])
+df = spark.read.schema(schema).json("Files/data/")
+```
+
+### Missing Cache / Re-computation
+
+**What it is**: A DataFrame that is used multiple times is not cached, so Spark re-executes the full lineage from the source each time an action is called. Same stage appears multiple times with identical input/output.
+
+**Detection**: Multiple downstream actions re-trigger the same expensive computation (visible in stage repetition).
+
+**Fix:**
+```python
+# BEFORE (expensive re-computation)
+df_expensive = df.join(other, "key").groupBy("cat").agg(...)
+result1 = df_expensive.filter(col("cat") == "A").count()
+result2 = df_expensive.filter(col("cat") == "B").show()
+# Both calls re-execute the join and aggregation
+
+# AFTER (cache and reuse)
+df_expensive = df.join(other, "key").groupBy("cat").agg(...).cache()
+df_expensive.count()  # trigger materialisation
+
+result1 = df_expensive.filter(col("cat") == "A").count()
+result2 = df_expensive.filter(col("cat") == "B").show()
+
+# ALWAYS unpersist when done
+df_expensive.unpersist()
+```
 
 ---
 

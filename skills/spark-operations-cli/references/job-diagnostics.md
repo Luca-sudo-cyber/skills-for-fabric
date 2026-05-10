@@ -8,22 +8,77 @@
 
 Spark job failures in Fabric fall into distinct categories. Identify the category first — it determines the remediation path.
 
-### Out of Memory (OOM)
+### 1. Out of Memory — Driver
 
-**Symptoms**:
-- `java.lang.OutOfMemoryError: Java heap space` in driver or executor
-- `java.lang.OutOfMemoryError: GC overhead limit exceeded`
-- Container killed by YARN: `Container killed by the ApplicationMaster. ... Exit code is 137`
-- `ExecutorLostFailure (executor N exited caused by one of the running tasks)`
+**Signature:** `java.lang.OutOfMemoryError: Java heap space` in driver stderr
+**Also matches:** `OutOfMemoryError: GC overhead limit exceeded`
+
+**Root Cause:**
+The Spark Driver JVM ran out of heap memory. Most commonly caused by collecting large amounts of data to the driver with `collect()`, `toPandas()`, or `show()` on a large DataFrame.
 
 **Common Causes**:
 | Cause | Indicator | Fix |
 |---|---|---|
-| Driver OOM from `collect()` | Error in driver logs after `.collect()` call | Replace with `.limit(N).toPandas()` or write to table |
-| Driver OOM from `toPandas()` | Large DataFrame converted to Pandas | Use `.limit()` or process in Spark |
+| `collect()` on large DataFrame | Error in driver logs after `.collect()` call | Replace with `.limit(N).toPandas()` or write to table |
+| `toPandas()` on large DataFrame | Large DataFrame converted to Pandas | Use `.limit()` or process in Spark |
+| `show(n)` with large n | Materializes rows in driver | Use `display(df)` which is paginated |
+| Broadcast join on large table | OOM during broadcast | Set `spark.sql.autoBroadcastJoinThreshold=-1` |
+
+**Fix:**
+```python
+# Instead of collect: write to storage
+df.write.mode("overwrite").parquet("Files/output/")
+
+# Instead of toPandas on large data: sample first
+df.sample(0.01).toPandas()
+
+# Instead of show: use display() which is paginated
+display(df)
+
+# If you must collect: always check count first
+count = df.count()
+if count < 100_000:
+    df.collect()
+else:
+    raise ValueError(f"Too many rows to collect: {count}")
+```
+
+**Spark Config Fix (if driver must process large data):**
+```python
+spark.conf.set("spark.driver.memory", "8g")  # set in notebook config, not at runtime
+```
+
+### 2. Out of Memory — Executor
+
+**Signature:** `java.lang.OutOfMemoryError` in executor stderr
+**Also matches:** `Container killed by YARN for exceeding memory limits`, `ExecutorLostFailure (executor N exited caused by one of the running tasks)`
+
+**Root Cause:**
+An executor exceeded its JVM heap + overhead memory budget. Caused by large shuffle aggregations, wide transformations with many columns, or UDFs that create large intermediate objects.
+
+**Common Causes**:
+| Cause | Indicator | Fix |
+|---|---|---|
 | Executor OOM from wide transforms | Error during `shuffle`, `join`, or `groupBy` | Increase executor memory or repartition input |
-| Broadcast join on large table | OOM during broadcast | Set `spark.sql.autoBroadcastJoinThreshold=-1` or explicitly repartition |
 | Skewed partition | Single executor OOM while others are fine | Enable AQE skew join: `spark.sql.adaptive.skewJoin.enabled=true` |
+| Python UDFs creating large objects | OOM during UDF execution | Use Pandas UDFs (vectorized) or native PySpark functions |
+
+**Fix:**
+```python
+# Increase executor memory in Fabric notebook Spark settings (spark pool config)
+# spark.executor.memory = 4g (default varies by pool size)
+
+# Reduce data per partition
+df = df.repartition(200)
+
+# Avoid collecting broadcast data larger than spark.broadcast.blockSize
+# Use SortMergeJoin instead of BroadcastHashJoin for large tables
+spark.conf.set("spark.sql.autoBroadcastJoinThreshold", "-1")  # disable auto-broadcast
+
+# Enable off-heap memory for Tungsten
+spark.conf.set("spark.memory.offHeap.enabled", "true")
+spark.conf.set("spark.memory.offHeap.size", "2g")
+```
 
 **Diagnostic Query** (run in Livy session):
 ```python
@@ -34,13 +89,13 @@ partition_sizes.describe("count").show()
 # If max >> mean, you have data skew
 ```
 
-### Shuffle Failures
+### 3. Shuffle Fetch Failed
 
-**Symptoms**:
-- `FetchFailedException: Failed to connect to host`
-- `ShuffleMapTask failed with FetchFailed`
-- `Too large frame` errors
-- `Connection reset by peer` during shuffle read
+**Signature:** `org.apache.spark.shuffle.FetchFailedException`
+**Also matches:** `Failed to get broadcast_N`, `ShuffleMapTask failed with FetchFailed`
+
+**Root Cause:**
+An executor tried to fetch shuffle data (map output) from another executor, but that executor died or the shuffle block was lost. Often a secondary symptom of OOM killing the producer executor.
 
 **Common Causes**:
 | Cause | Indicator | Fix |
@@ -49,6 +104,157 @@ partition_sizes.describe("count").show()
 | Network timeout | `Connection timed out` in shuffle fetch | Increase `spark.network.timeout` (default 120s) |
 | Excessive shuffle data | Shuffle write > available disk | Reduce data before shuffle, add pre-filters |
 | Too many shuffle partitions | Thousands of small tasks | Set `spark.sql.shuffle.partitions` to 2-4x core count |
+
+**Fix:**
+```python
+# Increase executor memory to prevent the producer from dying
+# Enable AQE to handle skew that might overload one executor
+spark.conf.set("spark.sql.adaptive.enabled", "true")
+spark.conf.set("spark.sql.adaptive.skewJoin.enabled", "true")
+
+# Reduce shuffle data by filtering early
+df = df.filter(col("date") >= "2024-01-01")  # push filter before shuffle
+
+# Increase shuffle retry tolerance
+spark.conf.set("spark.shuffle.maxRetriesOnNetIssue", "10")
+spark.conf.set("spark.shuffle.retryWait", "5s")
+```
+
+### 4. Executor Lost
+
+**Signature:** `ExecutorLostFailure (executor N exited caused by one of the running tasks)`
+**Also matches:** `Lost executor N on host`
+
+**Root Cause:**
+The executor process was killed by the OS or resource manager, typically due to memory overuse (container eviction) or a JVM crash.
+
+**Fix:**
+- Check if OOM errors precede this in the log (see pattern #2)
+- Reduce memory pressure: smaller partitions, less data per task
+- Enable speculative execution to tolerate slow executors:
+
+```python
+spark.conf.set("spark.speculation", "true")
+spark.conf.set("spark.speculation.multiplier", "1.5")
+```
+
+### 5. Analysis Exception (SQL / Schema Error)
+
+**Signature:** `org.apache.spark.sql.AnalysisException`
+**Also matches:** `cannot resolve column`, `cannot up cast`, `Column 'X' does not exist`
+
+**Root Cause:**
+Spark cannot resolve a column name, function, or data type at query planning time. Caused by typos in column names, schema mismatches, or using a column that was dropped/renamed earlier.
+
+**Fix:**
+```python
+# Print schema to verify column names
+df.printSchema()
+
+# Check available columns
+print(df.columns)
+
+# Use backticks for column names with spaces or special chars
+df.select("`my column`")
+
+# Verify the column exists before using it
+assert "user_id" in df.columns, "user_id column missing"
+```
+
+### 6. File Not Found / Path Error
+
+**Signature:** `java.io.FileNotFoundException`
+**Also matches:** `Path does not exist`, `No such file or directory`
+
+**Root Cause:**
+A file or directory path referenced in the code does not exist in the Lakehouse or ABFSS storage. Common causes: wrong path prefix, file was deleted, or a previous write step failed.
+
+**Fix:**
+```python
+# Use the correct Fabric Lakehouse path format
+df = spark.read.parquet("abfss://<workspace>@<storage>.dfs.core.windows.net/<path>")
+
+# Or use the Files shortcut in Fabric notebooks
+df = spark.read.parquet("Files/my_folder/my_file.parquet")
+
+# Check existence before reading
+from pyspark.sql import SparkSession
+fs = spark._jvm.org.apache.hadoop.fs.FileSystem.get(spark._jsc.hadoopConfiguration())
+path = spark._jvm.org.apache.hadoop.fs.Path("Files/my_folder")
+if not fs.exists(path):
+    raise FileNotFoundError(f"Path does not exist: {path}")
+```
+
+### 7. Task Killed — Speculative Execution (Informational)
+
+**Signature:** `TaskKilled (another attempt succeeded)`
+
+**Root Cause:**
+This is **normal behavior** from Spark's speculative execution. When a task runs slower than peers, Spark launches a duplicate. The slower duplicate is killed when the faster one completes.
+
+**Action:**
+None required. If these appear frequently (many tasks killed per stage), the cluster may be over-provisioned or data is skewed — see [performance-patterns.md](performance-patterns.md#data-skew) for skew detection.
+
+### 8. Library Packaging Error
+
+**Signature:** `library packaging error` in Livy log
+**Also matches:** `Failed to install`, `pip install failed`
+
+**Root Cause:**
+A custom Python library or wheel file specified in the session environment failed to install — usually due to a version conflict, missing dependency, or network issue.
+
+**Fix:**
+1. Verify the library version exists for the Fabric runtime's Python version
+2. Check for conflicting dependencies:
+   ```bash
+   pip install <lib> --dry-run
+   ```
+3. Upload the wheel file directly to Lakehouse Files and install inline:
+   ```python
+   %pip install /lakehouse/default/Files/mylib-1.0-py3-none-any.whl
+   ```
+
+### 9. Spark SQL Parse Exception
+
+**Signature:** `org.apache.spark.sql.catalyst.parser.ParseException`
+
+**Root Cause:**
+Invalid SQL syntax in a `spark.sql("...")` call or SQL magic cell.
+
+**Fix:**
+```python
+# Use triple quotes and test the SQL separately
+query = """
+    SELECT
+        user_id,
+        COUNT(*) AS event_count
+    FROM events
+    WHERE date >= '2024-01-01'
+    GROUP BY user_id
+"""
+spark.sql(query).show(5)
+```
+
+### 10. Broadcast Timeout
+
+**Signature:** `SparkException: Could not execute broadcast in N secs`
+**Also matches:** `org.apache.spark.SparkException: Broadcast timeout`
+
+**Root Cause:**
+The driver took too long to broadcast a table to all executors, usually because the "small" table is actually too large for broadcast.
+
+**Fix:**
+```python
+# Increase timeout (default 300s)
+spark.conf.set("spark.sql.broadcastTimeout", "600")
+
+# Or disable auto-broadcast and switch to SortMergeJoin
+spark.conf.set("spark.sql.autoBroadcastJoinThreshold", "-1")
+
+# Or explicitly hint the join type instead
+from pyspark.sql.functions import broadcast
+df_large.join(broadcast(df_truly_small), "key")
+```
 
 ### Timeout Failures
 
@@ -65,21 +271,22 @@ partition_sizes.describe("count").show()
 | Long-running task | Single task runs for hours | Check for data skew or Cartesian join |
 | Spark context shutdown | Context killed by Fabric | Check capacity throttling; retry with smaller dataset |
 
-### Dependency and Configuration Errors
+---
 
-**Symptoms**:
-- `ClassNotFoundException` or `NoSuchMethodError`
-- `Py4JJavaError: An error occurred while calling o123.load`
-- `AnalysisException: Table or view not found`
-- `IllegalArgumentException` from invalid config values
+## Quick Reference Table
 
-**Common Causes**:
-| Cause | Indicator | Fix |
-|---|---|---|
-| Missing library | `ClassNotFoundException` with library class name | Install library via Fabric Environment |
-| Wrong library version | `NoSuchMethodError` | Check library version compatibility |
-| Table not found | `AnalysisException` | Verify lakehouse attachment and table name |
-| Invalid Spark config | `IllegalArgumentException` | Validate config key and value format |
+| Error Signature | Pattern # | Severity | Most Likely Fix |
+|----------------|-----------|----------|----------------|
+| `OutOfMemoryError: Java heap space` (driver) | 1 | HIGH | Replace `collect()` / `toPandas()` with `write` |
+| `OutOfMemoryError` (executor) | 2 | HIGH | Increase executor memory, repartition |
+| `FetchFailedException` | 3 | HIGH | Fix OOM upstream, enable AQE |
+| `ExecutorLostFailure` | 4 | HIGH | Reduce memory pressure, check OOM |
+| `AnalysisException` | 5 | MEDIUM | Fix column names / schema |
+| `FileNotFoundException` | 6 | MEDIUM | Verify file paths |
+| `TaskKilled (another attempt succeeded)` | 7 | INFO | Normal — no action needed |
+| `library packaging error` | 8 | MEDIUM | Fix library version / upload wheel manually |
+| `ParseException` | 9 | LOW | Fix SQL syntax |
+| `Could not execute broadcast` | 10 | MEDIUM | Increase timeout or disable auto-broadcast |
 
 ---
 

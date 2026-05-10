@@ -82,7 +82,7 @@ See [MCP setup](mcp-setup/README.md) and the [MCP servers guide](docs/mcp-server
 
 ## Other AI coding tools
 
-GitHub Copilot CLI plugin installation is the recommended path. This repository also includes root-level configuration files for compatible AI coding tools, including [CLAUDE.md](CLAUDE.md), [.cursorrules](.cursorrules), and [.windsurfrules](.windsurfrules).
+GitHub Copilot CLI plugin installation is the recommended path. This repository also includes root-level configuration files for compatible AI coding tools — [CLAUDE.md](CLAUDE.md) for Claude Code, [.cursorrules](.cursorrules) for Cursor, [.windsurfrules](.windsurfrules) for Windsurf, and [AGENTS.md](AGENTS.md) for Codex / Jules / OpenCode. They are picked up automatically when the repo is cloned.
 
 ## Issues and security
 

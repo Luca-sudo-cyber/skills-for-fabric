@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "fabric-consumption",
   "displayName": "Fabric Consumption",
-  "description": "Consumer skills for interactive Microsoft Fabric operations - queries, exploration, monitoring. Skills, agents, and the FabricIQ MCP server are auto-discovered from this plugin's skills/, agents/, and .mcp.json.",
+  "description": "Consumer skills for interactive Microsoft Fabric operations - queries, exploration, monitoring. Skills and agents are auto-discovered from this plugin's skills/ and agents/.",
   "version": "0.3.3",
   "author": {
     "name": "Microsoft",

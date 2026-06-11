@@ -13,7 +13,7 @@
   "plugins": [
     {
       "name": "fabric-skills",
-      "source": "fabric-skills",
+      "source": "./plugins/fabric-skills",
       "description": "Complete bundle: all Microsoft Skills for Fabric for developers and consumers",
       "version": "0.3.3",
       "repository": "https://github.com/microsoft/skills-for-fabric",
@@ -33,7 +33,7 @@
     },
     {
       "name": "fabric-authoring",
-      "source": "fabric-authoring",
+      "source": "./plugins/fabric-authoring",
       "description": "Developer skills for authoring Microsoft Fabric solutions - SDKs, APIs, automation scripts, CI/CD",
       "version": "0.3.3",
       "repository": "https://github.com/microsoft/skills-for-fabric",
@@ -50,7 +50,7 @@
     },
     {
       "name": "fabric-consumption",
-      "source": "fabric-consumption",
+      "source": "./plugins/fabric-consumption",
       "description": "Consumer skills for interactive Microsoft Fabric operations - queries, exploration, monitoring",
       "version": "0.3.3",
       "repository": "https://github.com/microsoft/skills-for-fabric",
@@ -65,7 +65,7 @@
     },
     {
       "name": "fabric-operations",
-      "source": "fabric-operations",
+      "source": "./plugins/fabric-operations",
       "description": "Operations skills for diagnosing Microsoft Fabric performance and health - system views, multi-step investigation workflows",
       "version": "0.3.3",
       "repository": "https://github.com/microsoft/skills-for-fabric",
@@ -81,7 +81,7 @@
     },
     {
       "name": "powerbi-authoring",
-      "source": "powerbi-authoring",
+      "source": "./plugins/powerbi-authoring",
       "description": "Developer skills for authoring Microsoft Power BI solutions.",
       "version": "0.3.3",
       "repository": "https://github.com/microsoft/skills-for-fabric",

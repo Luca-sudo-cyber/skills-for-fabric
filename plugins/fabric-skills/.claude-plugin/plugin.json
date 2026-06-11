@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "fabric-skills",
   "displayName": "Fabric Skills (Full Bundle)",
-  "description": "Complete bundle: all Microsoft Skills for Fabric for developers and consumers. Skills, agents, and the FabricIQ MCP server are auto-discovered from this plugin's skills/, agents/, and .mcp.json.",
+  "description": "Complete bundle: all Microsoft Skills for Fabric for developers and consumers. Skills and agents are auto-discovered from this plugin's skills/ and agents/.",
   "version": "0.3.3",
   "author": {
     "name": "Microsoft",

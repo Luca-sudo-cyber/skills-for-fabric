@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "powerbi-authoring",
+  "displayName": "Power BI Authoring",
+  "description": "Developer skills for authoring Microsoft Power BI solutions. Skills and the powerbi-modeling-mcp local MCP server are auto-discovered from this plugin's skills/ and .mcp.json.",
+  "version": "0.3.3",
+  "author": {
+    "name": "Microsoft",
+    "email": "copilot@microsoft.com"
+  },
+  "homepage": "https://github.com/microsoft/skills-for-fabric",
+  "repository": "https://github.com/microsoft/skills-for-fabric",
+  "license": "MIT",
+  "keywords": [
+    "fabric",
+    "microsoft-fabric",
+    "authoring",
+    "powerbi",
+    "semantic-model",
+    "pbip",
+    "pbir",
+    "report",
+    "developer"
+  ]
+}

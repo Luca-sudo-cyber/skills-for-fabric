@@ -1,13 +1,19 @@
 # Microsoft Fabric Skills
 
-Microsoft Fabric Skills are reusable AI assistant instructions for working with Microsoft Fabric. They help GitHub Copilot CLI and compatible AI coding tools understand Fabric workloads, APIs, query patterns, and operational best practices.
+Microsoft Fabric Skills are reusable AI assistant instructions for working with Microsoft Fabric. They help Claude Code and compatible AI coding tools understand Fabric workloads, APIs, query patterns, and operational best practices.
 
-## Install with GitHub Copilot CLI
+This repo is a **Claude Code plugin marketplace** (`fabric-collection`). Skills, agents, and MCP servers are bundled as installable plugins under `plugins/`.
 
-Add the public marketplace:
+## Install with Claude Code
+
+Add the marketplace (from a local clone or directly from GitHub):
 
 ```bash
+# From GitHub
 /plugin marketplace add microsoft/skills-for-fabric
+
+# Or from a local clone
+/plugin marketplace add ./skills-for-fabric
 ```
 
 Install the full bundle:
@@ -27,15 +33,12 @@ Or install a focused bundle:
 
 # Operations: diagnostics and performance investigation
 /plugin install fabric-operations@fabric-collection
+
+# Power BI authoring: semantic models and PBIR/PBIP report projects
+/plugin install powerbi-authoring@fabric-collection
 ```
 
-You can also filter the full bundle by workload:
-
-```bash
-/plugin install fabric-skills@fabric-collection --filter "sqldw-*"
-/plugin install fabric-skills@fabric-collection --filter "spark-*"
-/plugin install fabric-skills@fabric-collection --filter "eventhouse-*"
-```
+Manage installed plugins with `/plugin list`, `/plugin enable`, `/plugin disable`, and refresh the catalog with `/plugin marketplace update fabric-collection`.
 
 ## What is included
 
@@ -57,7 +60,7 @@ See [CHANGELOG.md](CHANGELOG.md) for public release notes.
 - [NYC Taxi medallion architecture](prompt_examples/NYCTaxi_MedallionArchitecture.txt)
 - [Dashboard app](prompt_examples/DashboardApp.txt)
 
-After installing a bundle, open Copilot CLI in a project folder and ask for the Fabric task you want to perform, for example:
+After installing a bundle, open Claude Code in a project folder and ask for the Fabric task you want to perform, for example:
 
 ```text
 Use Microsoft Fabric skills to design a medallion architecture for NYC taxi data.
@@ -82,7 +85,7 @@ See [MCP setup](mcp-setup/README.md) and the [MCP servers guide](docs/mcp-server
 
 ## Other AI coding tools
 
-GitHub Copilot CLI plugin installation is the recommended path. This repository also includes root-level configuration files for compatible AI coding tools — [CLAUDE.md](CLAUDE.md) for Claude Code, [.cursorrules](.cursorrules) for Cursor, [.windsurfrules](.windsurfrules) for Windsurf, and [AGENTS.md](AGENTS.md) for Codex / Jules / OpenCode. They are picked up automatically when the repo is cloned.
+Claude Code plugin installation is the recommended path. The same `plugins/` directories also work as a [GitHub Copilot CLI](https://github.com/microsoft/skills-for-fabric) marketplace (each plugin keeps its Copilot manifest under `.github/plugin/`). This repository also includes root-level configuration files for other AI coding tools — [CLAUDE.md](CLAUDE.md) for Claude Code, [.cursorrules](.cursorrules) for Cursor, [.windsurfrules](.windsurfrules) for Windsurf, and [AGENTS.md](AGENTS.md) for Codex / Jules / OpenCode. They are picked up automatically when the repo is cloned.
 
 ## Issues and security
 

@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "fabric-skills",
+  "displayName": "Fabric Skills (Full Bundle)",
+  "description": "Complete bundle: all Microsoft Skills for Fabric for developers and consumers. Skills, agents, and the FabricIQ MCP server are auto-discovered from this plugin's skills/, agents/, and .mcp.json.",
+  "version": "0.3.3",
+  "author": {
+    "name": "Microsoft",
+    "email": "copilot@microsoft.com"
+  },
+  "homepage": "https://github.com/microsoft/skills-for-fabric",
+  "repository": "https://github.com/microsoft/skills-for-fabric",
+  "license": "MIT",
+  "keywords": [
+    "fabric",
+    "microsoft-fabric",
+    "medallion",
+    "data-warehouse",
+    "lakehouse",
+    "analytics",
+    "kql",
+    "kusto",
+    "eventhouse",
+    "real-time-intelligence"
+  ]
+}

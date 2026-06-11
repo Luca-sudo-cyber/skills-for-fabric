@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "fabric-operations",
+  "displayName": "Fabric Operations",
+  "description": "Operations skills for diagnosing Microsoft Fabric performance and health - system views, multi-step investigation workflows. Skills and agents are auto-discovered from this plugin's skills/ and agents/.",
+  "version": "0.3.3",
+  "author": {
+    "name": "Microsoft",
+    "email": "copilot@microsoft.com"
+  },
+  "homepage": "https://github.com/microsoft/skills-for-fabric",
+  "repository": "https://github.com/microsoft/skills-for-fabric",
+  "license": "MIT",
+  "keywords": [
+    "fabric",
+    "microsoft-fabric",
+    "operations",
+    "monitoring",
+    "diagnostics",
+    "performance"
+  ]
+}

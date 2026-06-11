@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "fabric-authoring",
+  "displayName": "Fabric Authoring",
+  "description": "Developer skills for authoring Microsoft Fabric solutions - SDKs, APIs, automation scripts, CI/CD. Skills and agents are auto-discovered from this plugin's skills/ and agents/.",
+  "version": "0.3.3",
+  "author": {
+    "name": "Microsoft",
+    "email": "copilot@microsoft.com"
+  },
+  "homepage": "https://github.com/microsoft/skills-for-fabric",
+  "repository": "https://github.com/microsoft/skills-for-fabric",
+  "license": "MIT",
+  "keywords": [
+    "fabric",
+    "microsoft-fabric",
+    "authoring",
+    "developer",
+    "medallion",
+    "sdk",
+    "api"
+  ]
+}

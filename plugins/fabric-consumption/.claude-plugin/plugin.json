@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "fabric-consumption",
+  "displayName": "Fabric Consumption",
+  "description": "Consumer skills for interactive Microsoft Fabric operations - queries, exploration, monitoring. Skills, agents, and the FabricIQ MCP server are auto-discovered from this plugin's skills/, agents/, and .mcp.json.",
+  "version": "0.3.3",
+  "author": {
+    "name": "Microsoft",
+    "email": "copilot@microsoft.com"
+  },
+  "homepage": "https://github.com/microsoft/skills-for-fabric",
+  "repository": "https://github.com/microsoft/skills-for-fabric",
+  "license": "MIT",
+  "keywords": [
+    "fabric",
+    "microsoft-fabric",
+    "consumption",
+    "query",
+    "exploration"
+  ]
+}
